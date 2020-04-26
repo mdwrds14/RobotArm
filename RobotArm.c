@@ -2,7 +2,6 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#include <accelerate.h> 
 
 Servo servo1;
 Servo servo2;
@@ -11,17 +10,20 @@ Servo servo4;
 Servo servo5;
 Servo servo6;
 RF24 radio(8, 9); // CE, CSN
-const byte address[6] = "0000A"; // assign the channel
+const byte address[6] = "00001";
 
-int servo1Pos, servo2Pos, servo3Pos, servo4Pos, servo5Pos, servo6Pos; // current position
+//int servo1Pos, servo2Pos, servo3Pos, servo4Pos, servo5Pos, servo6Pos; // current position
 int servo1PPos, servo2PPos, servo3PPos, servo4PPos, servo5PPos, servo6PPos; // previous position
 int servo01SP[50], servo02SP[50], servo03SP[50], servo04SP[50], servo05SP[50], servo06SP[50]; // for storing positions/steps
 int speedDelay = 20;
 int index = 0;
 String dataIn = "";
+int vala[3];
+int saved[1][10];
+int data[3];
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   
   servo1.attach(2); // waist
   servo2.attach(3); // shoulder
@@ -29,9 +31,9 @@ void setup() {
   servo4.attach(5); // wrist roll
   servo5.attach(6); // wrist pitch
   servo6.attach(7); // grabber
-  // Robot arm initial position
-  // servo1PPos = 90;
-  //servo1.write(servo1PPos);
+  //Robot arm initial position
+  servo1PPos = 90;
+  servo1.write(servo1PPos);
   servo2PPos = 180;
   servo2.write(servo2PPos);
   delay(100);
@@ -48,24 +50,43 @@ void setup() {
   servo6.write(servo6PPos);
   
   radio.begin();
-  radio.openReadingPipe(0, address);
+  radio.openReadingPipe(0,address);
   radio.setPALevel(RF24_PA_MIN);
   radio.startListening();
 }
 
 void loop() {
-  
-  if (radio.available()) {
-    char valax[32] = "";
-    char valay[32] = "";
-    char valaz[32] = ""; 
-    radio.write(&valax, sizeof(valax));
-    radio.write(&valay, sizeof(valay));
-    radio.write(&valaz, sizeof(valaz));
-    Serial.println(valax);
-    Serial.println(valay);
-    Serial.println(valaz);
+int saved[1][10];  
+  if (radio.available()) { 
+    for (int i=0; i<10; i++){ 
+    radio.read(vala,sizeof(vala));
+    int data[3] = {vala[0],vala[1],vala[2]}; // x,y,z
+//    Serial.println(vala[0]);
+//    Serial.println(vala[1]);
+//    Serial.println(vala[2]);
+    Serial.println(data[0]);
+    radio.stopListening();
+      for (int j=0; j<10; j++){
+        saved[1][j] = data;
+        //Serial.println(saved[1][j]);// for testing if the data was saved.
+      }
+    }
+    
+ }
+  if (data[0]<= 240 && data[1]>= 240 && data[1] < 250 && data[2]>= 240 && data[2] < 250){// turn left
+        servo1.write(servo1PPos--);
   }
 
+  if (data[0]>= 250 && data[1]>= 240 && data[1] < 250 && data[2]>= 240 && data[2] < 250){// turn right
+        servo1.write(servo1PPos++);
+  }
+
+  if (data[0]>= 240 && data[0] < 250 && data[1] <= 240 && data[2]>= 240 && data[2] < 250){// lower
+        servo3.write(servo3PPos--);
+  }
+  
+  if (data[0]>= 240 && data[0] < 250 && data[1] >= 250 && data[2]>= 240 && data[2] < 250){// raise
+        servo3.write(servo3PPos++);
+  }
   
 }
